@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import '../painters/drawing_painter.dart';
+import '../models/note.dart';
 
 class DrawingCanvas extends StatefulWidget {
   const DrawingCanvas({super.key});
@@ -14,7 +15,11 @@ class DrawingCanvas extends StatefulWidget {
 }
 
 class DrawingCanvasState extends State<DrawingCanvas> {
-  List<List<Offset>> strokes = [];
+  // List of all notes
+  List<Note> notes = [];
+  // Current note being edited
+  late Note currentNote;
+
   List<Offset> currentStroke = [];
   bool isDrawing = false;
   bool isErasing = false;
@@ -23,10 +28,33 @@ class DrawingCanvasState extends State<DrawingCanvas> {
   Offset _offset = Offset.zero;
   Offset? _lastFocalPoint;
 
+  @override
+  void initState() {
+    super.initState();
+    // Create the first note
+    currentNote =
+        Note(id: DateTime.now().millisecondsSinceEpoch.toString(), strokes: []);
+  }
+
   void clear() {
     setState(() {
-      strokes.clear();
+      currentNote.strokes.clear();
       currentStroke.clear();
+    });
+  }
+
+  void createNewNote() {
+    setState(() {
+      // Add current note to the list if it has strokes
+      if (currentNote.strokes.isNotEmpty) {
+        notes.add(currentNote);
+      }
+
+      // Create a new note
+      currentNote = Note(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        strokes: [],
+      );
     });
   }
 
@@ -70,14 +98,14 @@ class DrawingCanvasState extends State<DrawingCanvas> {
                 currentStroke.isNotEmpty) {
               setState(() {
                 isDrawing = false;
-                strokes.add(List.from(currentStroke));
+                currentNote.strokes.add(List.from(currentStroke));
                 currentStroke.clear();
               });
             }
           },
           child: CustomPaint(
             painter: DrawingPainter(
-              strokes: strokes,
+              strokes: _getAllStrokes(),
               currentStroke: currentStroke,
               scale: _scale,
               offset: _offset,
@@ -108,10 +136,25 @@ class DrawingCanvasState extends State<DrawingCanvas> {
     );
   }
 
+  // Combine all strokes for rendering
+  List<List<Offset>> _getAllStrokes() {
+    List<List<Offset>> allStrokes = [];
+
+    // Add strokes from completed notes
+    for (final note in notes) {
+      allStrokes.addAll(note.strokes);
+    }
+
+    // Add strokes from current note
+    allStrokes.addAll(currentNote.strokes);
+
+    return allStrokes;
+  }
+
   void _eraseStrokeAt(Offset position) {
     final adjustedPosition = (position - _offset) / _scale;
     setState(() {
-      strokes.removeWhere((stroke) =>
+      currentNote.strokes.removeWhere((stroke) =>
           stroke.any((point) => (point - adjustedPosition).distance < 10.0));
     });
   }

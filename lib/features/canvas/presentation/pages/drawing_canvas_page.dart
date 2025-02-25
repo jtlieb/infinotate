@@ -11,7 +11,13 @@ class DrawingCanvasPage extends StatelessWidget {
         title: const Text('Drawing Canvas'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.note_add),
+            tooltip: 'New Note',
+            onPressed: () => DrawingCanvas.of(context).createNewNote(),
+          ),
+          IconButton(
             icon: const Icon(Icons.delete),
+            tooltip: 'Clear',
             onPressed: () => DrawingCanvas.of(context).clear(),
           ),
         ],
