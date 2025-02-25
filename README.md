@@ -1,16 +1,7 @@
-# infinotate
+# [WIP] Infinotate
+Read. Write. No Need to Cite. 
 
-A new Flutter project.
+When you handwrite your thoughts with an ebook open, Infinotate remembers where you were in your book when you thought your thought! You can go deep on any of your chains of thought without losing place of your inspiration in the original text.
 
-## Getting Started
 
-This project is a starting point for a Flutter application.
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
