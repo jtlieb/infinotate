@@ -1,0 +1,6 @@
+repos:
+  - repo: https://github.com/flutter/flutter
+    rev: stable  # or specific version like 3.16.0
+    hooks:
+      - id: flutter-analyze
+      - id: dart-format 

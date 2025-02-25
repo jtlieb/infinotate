@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Flutter (DC 1)",
+            "request": "launch",
+            "type": "dart",
+            "deviceId": "adb-JPAQ00312-g0czyz._adb-tls-connect._tcp"
+        },
+        {
+            "name": "Flutter (Chrome)",
+            "request": "launch",
+            "type": "dart",
+            "deviceId": "chrome"
+        }
+    ]
+} 
