@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import '../models/note.dart';
 
 class DrawingPainter extends CustomPainter {
-  final List<List<Offset>> strokes;
+  final List<Note> notes;
+  final Note currentNote;
   final List<Offset> currentStroke;
   final double scale;
   final Offset offset;
 
   DrawingPainter({
-    required this.strokes,
+    required this.notes,
+    required this.currentNote,
     required this.currentStroke,
     required this.scale,
     required this.offset,
@@ -25,7 +28,16 @@ class DrawingPainter extends CustomPainter {
     canvas.translate(offset.dx, offset.dy);
     canvas.scale(scale);
 
-    _drawStrokes(canvas, strokes, paint);
+    // Draw all completed notes
+    for (final note in notes) {
+      paint.color = note.strokeColor;
+      _drawStrokes(canvas, note.strokes, paint);
+    }
+
+    // Draw current note
+    _drawStrokes(canvas, currentNote.strokes, paint);
+
+    // Draw current stroke
     _drawStrokes(canvas, [currentStroke], paint);
 
     canvas.restore();

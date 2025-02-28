@@ -5,9 +5,11 @@ import 'package:flutter/material.dart';
 class Note {
   final String id;
   final List<List<Offset>> strokes;
+  final Color strokeColor;
 
   Note({
     required this.id,
     required this.strokes,
+    required this.strokeColor,
   });
 }
