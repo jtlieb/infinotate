@@ -5,3 +5,4 @@ When you handwrite your thoughts with an ebook open, Infinotate remembers where 
 
 
 
+# Git configuration test
