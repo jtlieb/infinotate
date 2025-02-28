@@ -30,7 +30,6 @@ class DrawingPainter extends CustomPainter {
 
     // Draw all completed notes
     for (final note in notes) {
-      paint.color = note.strokeColor;
       _drawStrokes(canvas, note.strokes, paint);
     }
 

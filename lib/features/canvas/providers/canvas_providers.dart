@@ -33,8 +33,8 @@ final canvasTransformProvider = StateNotifierProvider<CanvasTransformNotifier,
 });
 
 // Drawing state (drawing/erasing)
-final drawingStateProvider = StateNotifierProvider<DrawingStateNotifier,
-    ({DrawingMode mode, Color strokeColor})>((ref) {
+final drawingStateProvider =
+    StateNotifierProvider<DrawingStateNotifier, ({DrawingMode mode})>((ref) {
   return DrawingStateNotifier();
 });
 
@@ -44,14 +44,12 @@ class CurrentNoteNotifier extends StateNotifier<Note> {
       : super(Note(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           strokes: [],
-          strokeColor: Colors.black,
         ));
 
   void addStroke(List<Offset> stroke) {
     state = Note(
       id: state.id,
       strokes: [...state.strokes, stroke],
-      strokeColor: state.strokeColor,
     );
   }
 
@@ -59,7 +57,6 @@ class CurrentNoteNotifier extends StateNotifier<Note> {
     state = Note(
       id: state.id,
       strokes: [],
-      strokeColor: state.strokeColor,
     );
   }
 
@@ -73,7 +70,6 @@ class CurrentNoteNotifier extends StateNotifier<Note> {
     state = Note(
       id: state.id,
       strokes: newStrokes,
-      strokeColor: state.strokeColor,
     );
   }
 }
@@ -114,24 +110,18 @@ class CanvasTransformNotifier
   }
 }
 
-class DrawingStateNotifier
-    extends StateNotifier<({DrawingMode mode, Color strokeColor})> {
-  DrawingStateNotifier()
-      : super((mode: DrawingMode.idle, strokeColor: Colors.black));
+class DrawingStateNotifier extends StateNotifier<({DrawingMode mode})> {
+  DrawingStateNotifier() : super((mode: DrawingMode.idle));
 
   void startDrawing() {
-    state = (mode: DrawingMode.drawing, strokeColor: state.strokeColor);
+    state = (mode: DrawingMode.drawing);
   }
 
   void startErasing() {
-    state = (mode: DrawingMode.erasing, strokeColor: state.strokeColor);
+    state = (mode: DrawingMode.erasing);
   }
 
   void stopDrawingAndErasing() {
-    state = (mode: DrawingMode.idle, strokeColor: state.strokeColor);
-  }
-
-  void setStrokeColor(Color color) {
-    state = (mode: state.mode, strokeColor: color);
+    state = (mode: DrawingMode.idle);
   }
 }
