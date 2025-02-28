@@ -32,7 +32,9 @@ class DrawingCanvasState extends ConsumerState<DrawingCanvas> {
               if (details.buttons == kSecondaryButton) {
                 // Eraser mode
                 ref.read(drawingStateProvider.notifier).startErasing();
-                ref.read(currentNoteProvider.notifier).eraseStrokeAt(
+                ref
+                    .read(currentNoteProvider.notifier)
+                    .eraseStrokeAt(
                       details.localPosition,
                       transform.scale,
                       transform.offset,
@@ -42,7 +44,7 @@ class DrawingCanvasState extends ConsumerState<DrawingCanvas> {
                 ref.read(drawingStateProvider.notifier).startDrawing();
                 final adjustedPosition =
                     (details.localPosition - transform.offset) /
-                        transform.scale;
+                    transform.scale;
                 ref
                     .read(currentStrokeProvider.notifier)
                     .start(adjustedPosition);
@@ -54,7 +56,9 @@ class DrawingCanvasState extends ConsumerState<DrawingCanvas> {
               if (details.buttons == kSecondaryButton &&
                   drawingState.mode == DrawingMode.erasing) {
                 // Eraser mode
-                ref.read(currentNoteProvider.notifier).eraseStrokeAt(
+                ref
+                    .read(currentNoteProvider.notifier)
+                    .eraseStrokeAt(
                       details.localPosition,
                       transform.scale,
                       transform.offset,
@@ -63,7 +67,7 @@ class DrawingCanvasState extends ConsumerState<DrawingCanvas> {
                 // Drawing mode
                 final adjustedPosition =
                     (details.localPosition - transform.offset) /
-                        transform.scale;
+                    transform.scale;
                 ref
                     .read(currentStrokeProvider.notifier)
                     .addPoint(adjustedPosition);

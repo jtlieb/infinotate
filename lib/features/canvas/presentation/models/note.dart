@@ -6,8 +6,5 @@ class Note {
   final String id;
   final List<List<Offset>> strokes;
 
-  Note({
-    required this.id,
-    required this.strokes,
-  });
+  Note({required this.id, required this.strokes});
 }

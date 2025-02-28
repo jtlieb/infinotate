@@ -13,16 +13,17 @@ class DrawingCanvasPage extends ConsumerWidget {
         title: const Text('Drawing Canvas'),
         actions: [
           IconButton(
-              icon: const Icon(Icons.note_add),
-              tooltip: 'New Note',
-              onPressed: () {
-                final currentNote = ref.read(currentNoteProvider);
+            icon: const Icon(Icons.note_add),
+            tooltip: 'New Note',
+            onPressed: () {
+              final currentNote = ref.read(currentNoteProvider);
 
-                if (currentNote.strokes.isNotEmpty) {
-                  ref.read(notesProvider.notifier).addNote(currentNote);
-                  ref.read(currentNoteProvider.notifier).clear();
-                }
-              }),
+              if (currentNote.strokes.isNotEmpty) {
+                ref.read(notesProvider.notifier).addNote(currentNote);
+                ref.read(currentNoteProvider.notifier).clear();
+              }
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.delete),
             tooltip: 'Clear',

@@ -18,11 +18,12 @@ class DrawingPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.black
-      ..strokeWidth = 2.0
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
+    final paint =
+        Paint()
+          ..color = Colors.black
+          ..strokeWidth = 2.0
+          ..strokeCap = StrokeCap.round
+          ..style = PaintingStyle.stroke;
 
     canvas.save();
     canvas.translate(offset.dx, offset.dy);
