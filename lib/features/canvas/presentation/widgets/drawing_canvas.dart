@@ -80,6 +80,8 @@ class DrawingCanvasState extends ConsumerState<DrawingCanvas> {
                   currentStroke.isNotEmpty) {
                 ref.read(currentNoteProvider.notifier).addStroke(currentStroke);
                 ref.read(currentStrokeProvider.notifier).clear();
+
+                // Debug toast removed to make it less aggressive
               }
               ref.read(drawingStateProvider.notifier).stopDrawingAndErasing();
             }
