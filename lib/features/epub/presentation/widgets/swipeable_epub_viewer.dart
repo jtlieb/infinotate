@@ -53,7 +53,7 @@ class _SwipeableEpubViewerState extends ConsumerState<SwipeableEpubViewer>
   void _initializeAnimationController() {
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 180),
+      duration: const Duration(milliseconds: 80),
     );
 
     _animation = CurvedAnimation(
@@ -223,10 +223,7 @@ class _SwipeableEpubViewerState extends ConsumerState<SwipeableEpubViewer>
           top: 0,
           bottom: 0,
           // When minimized, position it completely off-screen except for the visible strip
-          right:
-              isEpubMostlyHidden
-                  ? -epubWidth + _minVisibleWidth
-                  : -translationOffset,
+          right: -translationOffset,
           width: epubWidth,
           child: IgnorePointer(
             // Ignore pointer events when mostly hidden, allowing canvas to receive them
@@ -251,8 +248,6 @@ class _SwipeableEpubViewerState extends ConsumerState<SwipeableEpubViewer>
           right:
               isEpubFullyHidden
                   ? -20
-                  : _swipePosition >= 0.99
-                  ? _minVisibleWidth - _tabWidth - tabLeftPosition
                   : epubWidth - translationOffset - _tabWidth - tabLeftPosition,
           width: _tabWidth, // Always use fixed tab width
           height: _tabHeight,
@@ -377,10 +372,7 @@ class _SwipeableEpubViewerState extends ConsumerState<SwipeableEpubViewer>
               color: Colors.white,
               border: Border(
                 left: BorderSide(
-                  color:
-                      Colors
-                          .grey
-                          .shade300, // Subtle border color matching the tab
+                  color: Colors.grey.shade400, // Match the tab border color
                   width: 1.0,
                 ),
               ),
