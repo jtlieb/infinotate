@@ -46,6 +46,8 @@ class _UnifiedReaderPageState extends ConsumerState<UnifiedReaderPage> {
 
     // Mark as initialized
     _initialized = true;
+
+    debugPrint('Book initialized: ${widget.initialBook!.title}');
   }
 
   @override
@@ -53,10 +55,9 @@ class _UnifiedReaderPageState extends ConsumerState<UnifiedReaderPage> {
     final epubState = ref.watch(epubStateProvider);
     final currentBook = ref.watch(currentBookProvider);
 
+    // Always show the main content immediately
     return Scaffold(
       // Remove AppBar to give more vertical space
-
-      // Remove floating action button as we'll add a custom button bar
       floatingActionButton: null,
       body: Stack(
         children: [

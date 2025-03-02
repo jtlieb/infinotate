@@ -13,6 +13,9 @@ final epubLoadingProvider = StateProvider<bool>((ref) => false);
 // State provider to track if the EPUB viewer is embedded
 final epubEmbeddedProvider = StateProvider<bool>((ref) => false);
 
+// State provider to track if the EPUB is fully loaded and ready to display
+final epubFullyLoadedProvider = StateProvider<bool>((ref) => false);
+
 /// A widget that displays an EPUB book in a swipeable panel
 class SwipeableEpubViewer extends ConsumerStatefulWidget {
   const SwipeableEpubViewer({super.key});
@@ -539,100 +542,102 @@ class _SwipeableEpubViewerState extends ConsumerState<SwipeableEpubViewer>
               ? service.FlutterEpubViewerService.getSourceForAsset(filePath)
               : service.FlutterEpubViewerService.getSourceForFile(filePath);
 
-      // Return the EpubViewer widget
-      return StylusInputIgnoredWidget(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            16.0,
-            8.0,
-            16.0,
-            16.0,
-          ), // Reduced top padding to maximize vertical space
-          child: EpubViewer(
-            epubController: _epubController,
-            epubSource: epubSource,
-            displaySettings: EpubDisplaySettings(
-              flow: EpubFlow.paginated,
-              snap: true,
+      // Return the EpubViewer widget with a loading indicator overlay if still loading
+      return Stack(
+        children: [
+          StylusInputIgnoredWidget(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                16.0,
+                8.0,
+                16.0,
+                16.0,
+              ), // Reduced top padding to maximize vertical space
+              child: EpubViewer(
+                epubController: _epubController,
+                epubSource: epubSource,
+                displaySettings: EpubDisplaySettings(
+                  flow: EpubFlow.paginated,
+                  snap: true,
+                ),
+                onChaptersLoaded: (chapters) {
+                  debugPrint('Chapters loaded: ${chapters.length}');
+                  ref.read(epubFullyLoadedProvider.notifier).state = true;
+                },
+                onEpubLoaded: () {
+                  debugPrint('EPUB loaded callback triggered');
+                  ref.read(epubFullyLoadedProvider.notifier).state = true;
+                },
+                onRelocated: (dynamic value) {
+                  // Update the current page with default values
+                  int currentPage = 0;
+                  int totalPages = 1;
+
+                  // Log the value for debugging
+                  debugPrint('Relocated: $value');
+
+                  // Mark as fully loaded on first relocation
+                  ref.read(epubFullyLoadedProvider.notifier).state = true;
+
+                  // Update the page info in the state
+                  ref
+                      .read(epubStateProvider.notifier)
+                      .updatePageInfo(
+                        currentPage: currentPage,
+                        totalPages: totalPages,
+                      );
+
+                  // Update the current book's last page
+                  final currentBook = ref.read(currentBookProvider);
+                  if (currentBook != null) {
+                    ref
+                        .read(currentBookProvider.notifier)
+                        .updateLastPage(currentPage);
+                  }
+                },
+                onTextSelected: (dynamic selection) {
+                  // Log the selection for debugging
+                  debugPrint('Text selected: $selection');
+                },
+              ),
             ),
-            onChaptersLoaded: (chapters) {
-              debugPrint('Chapters loaded: ${chapters.length}');
-            },
-            onEpubLoaded: () {
-              debugPrint('EPUB loaded');
-            },
-            onRelocated: (dynamic value) {
-              // Update the current page with default values
-              int currentPage = 0;
-              int totalPages = 1;
-
-              // Log the value for debugging
-              debugPrint('Relocated: $value');
-
-              // Update the page info in the state
-              ref
-                  .read(epubStateProvider.notifier)
-                  .updatePageInfo(
-                    currentPage: currentPage,
-                    totalPages: totalPages,
-                  );
-
-              // Update the current book's last page
-              final currentBook = ref.read(currentBookProvider);
-              if (currentBook != null) {
-                ref
-                    .read(currentBookProvider.notifier)
-                    .updateLastPage(currentPage);
-              }
-            },
-            onTextSelected: (dynamic selection) {
-              // Log the selection for debugging
-              debugPrint('Text selected: $selection');
-            },
           ),
-        ),
+
+          // Show a loading indicator overlay if the EPUB is still loading
+          if (isLoading || !ref.watch(epubFullyLoadedProvider))
+            Container(
+              color: Colors.white.withAlpha(179), // 0.7 * 255 ≈ 179
+              child: const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Loading book...'),
+                  ],
+                ),
+              ),
+            ),
+        ],
       );
     }
 
-    // If the EPUB is loading, show a loading spinner
-    if (isLoading) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 20),
-            Text('Loading EPUB...'),
-          ],
-        ),
-      );
-    }
+    // Automatically open the EPUB book if it's not already embedded or loading
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (context.mounted && !isEmbedded && !isLoading) {
+        debugPrint('Auto-opening EPUB book');
+        _openEpubBook(context, filePath, isAsset);
+      }
+    });
 
-    // Otherwise, show a button to open the EPUB
-    return StylusInputIgnoredWidget(
+    // Show a loading indicator while we're automatically opening the book
+    return const Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
-            'EPUB Viewer',
-            style: Theme.of(context).textTheme.headlineMedium,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            isAsset ? 'Asset: $filePath' : 'File: $filePath',
-            style: Theme.of(context).textTheme.bodyLarge,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 32),
-          ElevatedButton(
-            onPressed: () => _openEpubBook(context, filePath, isAsset),
-            child: const Text('Open EPUB'),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Swipe left or right to navigate between pages',
-            textAlign: TextAlign.center,
-          ),
+          CircularProgressIndicator(),
+          SizedBox(height: 20),
+          Text('Preparing EPUB viewer...'),
         ],
       ),
     );
@@ -646,16 +651,19 @@ class _SwipeableEpubViewerState extends ConsumerState<SwipeableEpubViewer>
   ) async {
     // Set loading state to true
     ref.read(epubLoadingProvider.notifier).state = true;
+    // Reset the fully loaded state
+    ref.read(epubFullyLoadedProvider.notifier).state = false;
+
+    debugPrint('Opening EPUB book: $filePath');
 
     try {
       // Set embedded state to true before opening the EPUB
       ref.read(epubEmbeddedProvider.notifier).state = true;
-
-      // No need to configure the viewer anymore as we're using the EpubController directly
     } catch (e) {
       // Reset states on error
       ref.read(epubLoadingProvider.notifier).state = false;
       ref.read(epubEmbeddedProvider.notifier).state = false;
+      ref.read(epubFullyLoadedProvider.notifier).state = false;
 
       // Show a more detailed error message
       if (context.mounted) {
@@ -687,8 +695,11 @@ class _SwipeableEpubViewerState extends ConsumerState<SwipeableEpubViewer>
       }
       debugPrint('Error opening EPUB: $e');
     } finally {
-      // Set loading state to false
-      ref.read(epubLoadingProvider.notifier).state = false;
+      // Set loading state to false after a short delay
+      // This gives the EPUB viewer time to initialize
+      Future.delayed(const Duration(milliseconds: 1000), () {
+        ref.read(epubLoadingProvider.notifier).state = false;
+      });
     }
   }
 }
