@@ -128,24 +128,73 @@ class HomePage extends ConsumerWidget {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
-          final filePath = await FilePickerService.pickEpubFile();
+          // Show loading indicator
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Opening file picker...'),
+              duration: Duration(milliseconds: 500),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
 
-          if (filePath != null && context.mounted) {
-            // Create a new annotated book
-            final newBook = AnnotatedBook(
-              id: DateTime.now().millisecondsSinceEpoch.toString(),
-              filePath: filePath,
-              title: _extractTitleFromPath(filePath),
-              author:
-                  'Unknown Author', // In a real app, extract from EPUB metadata
-              lastModified: DateTime.now(),
+          // Check if FilePicker is working
+          final isPickerWorking = await FilePickerService.isPickerWorking();
+          if (!isPickerWorking && context.mounted) {
+            // If FilePicker is not working, show a message
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('File picker is not available on this device.'),
+                duration: Duration(seconds: 3),
+                behavior: SnackBarBehavior.floating,
+              ),
             );
+            return;
+          }
 
-            // Add the book to the library
-            ref.read(annotatedBooksProvider.notifier).addBook(newBook);
+          String? filePath;
 
-            // Navigate to the unified reader page with this book
-            _openBookReader(context, ref, newBook);
+          try {
+            filePath = await FilePickerService.pickEpubFile();
+          } catch (e) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Error opening file picker: ${e.toString()}'),
+                  duration: const Duration(seconds: 3),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+            return;
+          }
+
+          if (context.mounted) {
+            if (filePath != null) {
+              // Create a new annotated book
+              final newBook = AnnotatedBook(
+                id: DateTime.now().millisecondsSinceEpoch.toString(),
+                filePath: filePath,
+                title: _extractTitleFromPath(filePath),
+                author:
+                    'Unknown Author', // In a real app, extract from EPUB metadata
+                lastModified: DateTime.now(),
+              );
+
+              // Add the book to the library
+              ref.read(annotatedBooksProvider.notifier).addBook(newBook);
+
+              // Navigate to the unified reader page with this book
+              _openBookReader(context, ref, newBook);
+            } else {
+              // Show a message if no file was selected
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('No EPUB file selected'),
+                  duration: Duration(seconds: 2),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
           }
         },
         icon: const Icon(Icons.add),

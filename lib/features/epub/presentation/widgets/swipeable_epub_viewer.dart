@@ -465,7 +465,11 @@ class _SwipeableEpubViewerState extends ConsumerState<SwipeableEpubViewer>
             style: Theme.of(context).textTheme.headlineMedium,
           ),
           const SizedBox(height: 16),
-          Text('File: $filePath', style: Theme.of(context).textTheme.bodyLarge),
+          Text(
+            'File: $filePath',
+            style: Theme.of(context).textTheme.bodyLarge,
+            textAlign: TextAlign.center,
+          ),
           const SizedBox(height: 32),
           const Text(
             'Swipe left or right to navigate between pages',
