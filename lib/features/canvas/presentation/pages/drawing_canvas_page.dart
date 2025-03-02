@@ -48,26 +48,30 @@ class DrawingCanvasPage extends ConsumerWidget {
               final currentNote = ref.read(currentNoteProvider);
 
               if (currentNote.strokes.isNotEmpty) {
-                // Add the note to the current book if one is loaded
+                // Always add the note to the general notes list to keep it visible
+                ref.read(notesProvider.notifier).addNote(currentNote);
+
+                // Also add it to the current book if one is loaded
                 if (currentBook != null) {
                   ref.read(currentBookProvider.notifier).addNote(currentNote);
 
                   // Show debug toast with note ID
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('DEBUG: New note ${currentNote.id}'),
+                      content: Text(
+                        'DEBUG: New note ${currentNote.id} added to book and canvas',
+                      ),
                       duration: const Duration(seconds: 2),
                       behavior: SnackBarBehavior.floating,
                     ),
                   );
                 } else {
-                  // Otherwise, add it to the general notes list
-                  ref.read(notesProvider.notifier).addNote(currentNote);
-
                   // Show debug toast with note ID
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('DEBUG: New note ${currentNote.id}'),
+                      content: Text(
+                        'DEBUG: New note ${currentNote.id} added to canvas',
+                      ),
                       duration: const Duration(seconds: 2),
                       behavior: SnackBarBehavior.floating,
                     ),

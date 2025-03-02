@@ -53,12 +53,11 @@ class CurrentNoteNotifier extends StateNotifier<Note> {
   }
 
   void clear() {
-    final oldId = state.id;
     state = Note(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       strokes: [],
     );
-    developer.log('DEBUG: Cleared note $oldId, created new note ${state.id}');
+    developer.log('DEBUG: Created new empty note ${state.id}');
   }
 
   void eraseStrokeAt(Offset position, double scale, Offset offset) {
