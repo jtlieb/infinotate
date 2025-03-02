@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/epub_providers.dart';
 import '../../providers/annotated_book_providers.dart';
+import '../../../../core/widgets/stylus_input_ignored_widget.dart';
 
 /// A widget that displays an EPUB book in a swipeable panel
 class SwipeableEpubViewer extends ConsumerStatefulWidget {
@@ -43,9 +43,6 @@ class _SwipeableEpubViewerState extends ConsumerState<SwipeableEpubViewer>
 
   // Debounce mechanism to prevent rapid animations
   DateTime _lastAnimationTime = DateTime.now();
-
-  // Listener for detecting stylus input across the EPUB viewer area only
-  bool _isStylusInput = false;
 
   @override
   void initState() {
@@ -168,39 +165,7 @@ class _SwipeableEpubViewerState extends ConsumerState<SwipeableEpubViewer>
       child: SizedBox(
         width: epubWidth,
         height: double.infinity,
-        child: GestureDetector(
-          // Add a top-level gesture detector to ensure touch events are captured
-          behavior: HitTestBehavior.opaque,
-          onHorizontalDragUpdate: (details) {
-            // Skip if stylus input
-            if (_isStylusInput) return;
-
-            // Simple direct manipulation
-            setState(() {
-              // Calculate position change based on drag
-              final dragAmount =
-                  details.delta.dx / (epubWidth - _minVisibleWidth);
-              _swipePosition = (_swipePosition + dragAmount).clamp(0.0, 1.0);
-            });
-          },
-          onHorizontalDragEnd: (details) {
-            // Skip if stylus input
-            if (_isStylusInput) return;
-
-            // Simple threshold-based decision
-            final velocity = details.primaryVelocity ?? 0;
-
-            if (velocity > 300) {
-              // Fast swipe right - dismiss
-              _animateToPosition(1.0);
-            } else if (velocity < -300) {
-              // Fast swipe left - show
-              _animateToPosition(0.0);
-            } else {
-              // Based on position
-              _animateToPosition(_swipePosition > 0.5 ? 1.0 : 0.0);
-            }
-          },
+        child: StylusInputIgnoredWidget(
           child: Material(
             // Use Material widget to ensure proper rendering
             color: Colors.transparent,
@@ -212,7 +177,12 @@ class _SwipeableEpubViewerState extends ConsumerState<SwipeableEpubViewer>
                   bottom: 0,
                   right: -translationOffset,
                   width: epubWidth,
-                  child: _buildEpubContainer(context, epubState, currentBook),
+                  child: _buildEpubContainer(
+                    context,
+                    epubState,
+                    currentBook,
+                    epubWidth,
+                  ),
                 ),
 
                 // Edge swipe detector - only when minimized
@@ -225,9 +195,6 @@ class _SwipeableEpubViewerState extends ConsumerState<SwipeableEpubViewer>
                     child: GestureDetector(
                       onTap: () => _animateToPosition(0.0),
                       onHorizontalDragEnd: (details) {
-                        // Skip if stylus input
-                        if (_isStylusInput) return;
-
                         // Simple velocity check
                         if ((details.primaryVelocity ?? 0) < -300) {
                           _animateToPosition(0.0); // Open
@@ -236,28 +203,6 @@ class _SwipeableEpubViewerState extends ConsumerState<SwipeableEpubViewer>
                       child: Container(color: Colors.transparent),
                     ),
                   ),
-
-                // Listener for detecting stylus input across the EPUB viewer area only
-                Positioned.fill(
-                  child: Listener(
-                    behavior: HitTestBehavior.translucent,
-                    onPointerDown: (event) {
-                      if (event.kind == PointerDeviceKind.stylus) {
-                        setState(() {
-                          _isStylusInput = true;
-                        });
-                      }
-                    },
-                    onPointerUp: (event) {
-                      if (event.kind == PointerDeviceKind.stylus) {
-                        setState(() {
-                          _isStylusInput = false;
-                        });
-                      }
-                    },
-                    child: Container(color: Colors.transparent),
-                  ),
-                ),
               ],
             ),
           ),
@@ -271,6 +216,7 @@ class _SwipeableEpubViewerState extends ConsumerState<SwipeableEpubViewer>
     BuildContext context,
     dynamic epubState,
     dynamic currentBook,
+    double epubWidth,
   ) {
     // Calculate the tab's left position based on swipe position
     // Only start moving the tab when the slide is 60% complete
@@ -337,50 +283,79 @@ class _SwipeableEpubViewerState extends ConsumerState<SwipeableEpubViewer>
                 topRight: const Radius.circular(_tabCornerRadius),
                 bottomRight: const Radius.circular(_tabCornerRadius),
               ),
-              child: Container(
-                decoration: BoxDecoration(
-                  color:
-                      Colors
-                          .grey
-                          .shade200, // Lighter grey with constant opacity
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(topLeftRadius),
-                    bottomLeft: Radius.circular(bottomLeftRadius),
-                    topRight: const Radius.circular(_tabCornerRadius),
-                    bottomRight: const Radius.circular(_tabCornerRadius),
-                  ),
-                  border: Border.all(
-                    color: Colors.grey.shade300, // More subtle border color
-                    width: 1.0, // Thinner border
-                  ),
-                ),
-                child: Row(
-                  // Adjust alignment based on swipe position
-                  // When minimized, shift the arrow to be centered in the visible portion
-                  mainAxisAlignment:
-                      _swipePosition > 0.9
-                          ? MainAxisAlignment.start
-                          : MainAxisAlignment.center,
-                  children: [
-                    // Add padding that increases as the tab moves off-screen
-                    // This keeps the arrow centered in the visible portion
-                    Padding(
-                      padding: EdgeInsets.only(
-                        left:
-                            _swipePosition > 0.9
-                                ? (_tabWidth - _minVisibleWidth) * 0.5 -
-                                    15 // Center in visible area
-                                : 0, // No padding when fully visible
-                      ),
-                      child: Icon(
-                        _swipePosition < 0.5
-                            ? Icons.keyboard_double_arrow_right
-                            : Icons.keyboard_double_arrow_left,
-                        color: Colors.grey.shade700,
-                        size: 30,
-                      ),
+              child: GestureDetector(
+                // Add gesture detector to the tab for swiping
+                onHorizontalDragUpdate: (details) {
+                  setState(() {
+                    // Calculate position change based on drag
+                    final dragAmount =
+                        details.delta.dx / (epubWidth - _minVisibleWidth);
+                    _swipePosition = (_swipePosition + dragAmount).clamp(
+                      0.0,
+                      1.0,
+                    );
+                  });
+                },
+                onHorizontalDragEnd: (details) {
+                  // Simple threshold-based decision
+                  final velocity = details.primaryVelocity ?? 0;
+
+                  if (velocity > 300) {
+                    // Fast swipe right - dismiss
+                    _animateToPosition(1.0);
+                  } else if (velocity < -300) {
+                    // Fast swipe left - show
+                    _animateToPosition(0.0);
+                  } else {
+                    // Based on position
+                    _animateToPosition(_swipePosition > 0.5 ? 1.0 : 0.0);
+                  }
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    color:
+                        Colors
+                            .grey
+                            .shade200, // Lighter grey with constant opacity
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(topLeftRadius),
+                      bottomLeft: Radius.circular(bottomLeftRadius),
+                      topRight: const Radius.circular(_tabCornerRadius),
+                      bottomRight: const Radius.circular(_tabCornerRadius),
                     ),
-                  ],
+                    border: Border.all(
+                      color: Colors.grey.shade300, // More subtle border color
+                      width: 1.0, // Thinner border
+                    ),
+                  ),
+                  child: Row(
+                    // Adjust alignment based on swipe position
+                    // When minimized, shift the arrow to be centered in the visible portion
+                    mainAxisAlignment:
+                        _swipePosition > 0.9
+                            ? MainAxisAlignment.start
+                            : MainAxisAlignment.center,
+                    children: [
+                      // Add padding that increases as the tab moves off-screen
+                      // This keeps the arrow centered in the visible portion
+                      Padding(
+                        padding: EdgeInsets.only(
+                          left:
+                              _swipePosition > 0.9
+                                  ? (_tabWidth - _minVisibleWidth) * 0.5 -
+                                      15 // Center in visible area
+                                  : 0, // No padding when fully visible
+                        ),
+                        child: Icon(
+                          _swipePosition < 0.5
+                              ? Icons.keyboard_double_arrow_right
+                              : Icons.keyboard_double_arrow_left,
+                          color: Colors.grey.shade700,
+                          size: 30,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
