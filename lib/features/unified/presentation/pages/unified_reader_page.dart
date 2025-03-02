@@ -54,82 +54,10 @@ class _UnifiedReaderPageState extends ConsumerState<UnifiedReaderPage> {
     final currentBook = ref.watch(currentBookProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          currentBook != null ? currentBook.title : 'Reading & Notes',
-        ),
-        actions: [
-          // Toggle EPUB visibility
-          IconButton(
-            icon: Icon(
-              currentBook == null
-                  ? Icons.book_outlined
-                  : (epubState.isVisible ? Icons.book : Icons.book_outlined),
-            ),
-            tooltip:
-                currentBook == null
-                    ? 'No book loaded'
-                    : (epubState.isVisible ? 'Hide EPUB' : 'Show EPUB'),
-            onPressed:
-                currentBook == null
-                    ? null // Disable if no book is loaded
-                    : () {
-                      if (epubState.isVisible) {
-                        ref.read(epubStateProvider.notifier).hide();
-                      } else {
-                        ref.read(epubStateProvider.notifier).show();
-                      }
-                    },
-          ),
-          // New note button
-          IconButton(
-            icon: const Icon(Icons.note_add),
-            tooltip: 'Save Note',
-            onPressed: () {
-              final currentNote = ref.read(currentNoteProvider);
+      // Remove AppBar to give more vertical space
 
-              if (currentNote.strokes.isNotEmpty) {
-                // Always add the note to the general notes list
-                ref.read(notesProvider.notifier).addNote(currentNote);
-
-                // Also add it to the current book if one is loaded
-                if (currentBook != null) {
-                  ref.read(currentBookProvider.notifier).addNote(currentNote);
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Note saved to ${currentBook.title}'),
-                      duration: const Duration(seconds: 2),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Note saved'),
-                      duration: Duration(seconds: 2),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                }
-
-                // Clear the current note for a new one
-                ref.read(currentNoteProvider.notifier).clear();
-                ref.read(currentStrokeProvider.notifier).clear();
-              }
-            },
-          ),
-          // Clear current note
-          IconButton(
-            icon: const Icon(Icons.delete),
-            tooltip: 'Clear',
-            onPressed: () {
-              ref.read(currentNoteProvider.notifier).clear();
-              ref.read(currentStrokeProvider.notifier).clear();
-            },
-          ),
-        ],
-      ),
+      // Remove floating action button as we'll add a custom button bar
+      floatingActionButton: null,
       body: Stack(
         children: [
           // Drawing canvas (always present)
@@ -138,6 +66,154 @@ class _UnifiedReaderPageState extends ConsumerState<UnifiedReaderPage> {
           // Swipeable EPUB viewer (only when a book is loaded and visible)
           if (currentBook != null && epubState.isVisible)
             const SwipeableEpubViewer(),
+
+          // Back button in top-left corner
+          Positioned(
+            top: 16,
+            left: 16,
+            child: Container(
+              height: 40.0,
+              width: 40.0,
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(230),
+                borderRadius: BorderRadius.circular(12.0),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(20),
+                    blurRadius: 5.0,
+                    spreadRadius: 0.0,
+                    offset: const Offset(-2.0, 0.0),
+                  ),
+                ],
+                border: Border.all(color: Colors.grey.shade400, width: 1.0),
+              ),
+              child: IconButton(
+                icon: Icon(
+                  Icons.arrow_back,
+                  color: Colors.grey.shade700,
+                  size: 20,
+                ),
+                padding: EdgeInsets.zero,
+                tooltip: 'Back',
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+            ),
+          ),
+
+          // Button bar in bottom-left corner
+          Positioned(
+            bottom: 16,
+            left: 16,
+            child: Container(
+              height: 50.0, // Same height as swipe tab
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(230),
+                borderRadius: BorderRadius.circular(12.0), // Same as swipe tab
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(20),
+                    blurRadius: 5.0,
+                    spreadRadius: 0.0,
+                    offset: const Offset(-2.0, 0.0),
+                  ),
+                ],
+                border: Border.all(
+                  color: Colors.grey.shade400, // Match the tab border color
+                  width: 1.0, // Thinner border
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Toggle EPUB visibility
+                  if (currentBook != null)
+                    IconButton(
+                      icon: Icon(
+                        epubState.isVisible ? Icons.book : Icons.book_outlined,
+                        color:
+                            Colors
+                                .grey
+                                .shade700, // Match the swipe tab icon color
+                      ),
+                      tooltip: epubState.isVisible ? 'Hide EPUB' : 'Show EPUB',
+                      onPressed: () {
+                        if (epubState.isVisible) {
+                          ref.read(epubStateProvider.notifier).hide();
+                        } else {
+                          ref.read(epubStateProvider.notifier).show();
+                        }
+                      },
+                    ),
+                  // Save note button
+                  IconButton(
+                    icon: Icon(
+                      Icons.note_add,
+                      color:
+                          Colors
+                              .grey
+                              .shade700, // Match the swipe tab icon color
+                    ),
+                    tooltip: 'Save Note',
+                    onPressed: () {
+                      final currentNote = ref.read(currentNoteProvider);
+
+                      if (currentNote.strokes.isNotEmpty) {
+                        // Always add the note to the general notes list
+                        ref.read(notesProvider.notifier).addNote(currentNote);
+
+                        // Also add it to the current book if one is loaded
+                        if (currentBook != null) {
+                          ref
+                              .read(currentBookProvider.notifier)
+                              .addNote(currentNote);
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Note saved to ${currentBook.title}',
+                              ),
+                              duration: const Duration(seconds: 2),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Note saved'),
+                              duration: Duration(seconds: 2),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+
+                        // Clear the current note for a new one
+                        ref.read(currentNoteProvider.notifier).clear();
+                        ref.read(currentStrokeProvider.notifier).clear();
+                      }
+                    },
+                  ),
+                  // Clear note button
+                  IconButton(
+                    icon: Icon(
+                      Icons.delete,
+                      color:
+                          Colors
+                              .grey
+                              .shade700, // Match the swipe tab icon color
+                    ),
+                    tooltip: 'Clear',
+                    onPressed: () {
+                      ref.read(currentNoteProvider.notifier).clear();
+                      ref.read(currentStrokeProvider.notifier).clear();
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );

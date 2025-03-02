@@ -321,7 +321,7 @@ class _SwipeableEpubViewerState extends ConsumerState<SwipeableEpubViewer>
           },
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.grey.shade200, // Lighter grey with constant opacity
+              color: Colors.white.withAlpha(230), // Match other UI elements
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(topLeftRadius),
                 bottomLeft: Radius.circular(bottomLeftRadius),
@@ -332,6 +332,15 @@ class _SwipeableEpubViewerState extends ConsumerState<SwipeableEpubViewer>
                 color: Colors.grey.shade400, // More visible border color
                 width: 1.0, // Thinner border
               ),
+              // Add box shadow to match other UI elements
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(20),
+                  blurRadius: 5.0,
+                  spreadRadius: 0.0,
+                  offset: const Offset(-2.0, 0.0),
+                ),
+              ],
             ),
             child: Row(
               // Align chevron to the left when minimized, center otherwise
@@ -403,61 +412,107 @@ class _SwipeableEpubViewerState extends ConsumerState<SwipeableEpubViewer>
                 ),
               ],
             ),
+            // Add padding around the EPUB content
+            padding: const EdgeInsets.fromLTRB(
+              20.0,
+              70.0, // Increased top padding to accommodate the book title
+              20.0,
+              50.0, // Increased bottom padding to accommodate the button bar
+            ), // Adjusted padding for new UI elements
             child: _buildEpubContent(context, epubState.filePath!),
           ),
         ),
 
+        // Book title in top-left corner
+        if (currentBook != null)
+          Positioned(
+            top: 25,
+            left: 30,
+            child: Text(
+              currentBook.title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+
         // Navigation controls - centered in the available space with more spacing
         Positioned(
-          bottom: 16,
+          bottom: 20, // Increased from 16 to 20
           left: 0,
           right: 0,
           child: Center(
-            child: Row(
-              mainAxisAlignment:
-                  MainAxisAlignment
-                      .center, // Center alignment instead of spaceEvenly
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed:
-                      epubState.currentPage > 0
-                          ? () {
-                            ref.read(epubStateProvider.notifier).previousPage();
-                            // Update the current book's last page
-                            if (currentBook != null) {
-                              ref
-                                  .read(currentBookProvider.notifier)
-                                  .updateLastPage(epubState.currentPage - 1);
-                            }
-                          }
-                          : null,
-                ),
-                const SizedBox(width: 10), // Reduced spacing from 40 to 10
-                Text(
-                  '${epubState.currentPage + 1} / ${epubState.totalPages}',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+            child: Container(
+              height: 50.0, // Same height as swipe tab
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 8.0,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(230),
+                borderRadius: BorderRadius.circular(12.0), // Match swipe tab
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(20),
+                    blurRadius: 5.0,
+                    spreadRadius: 0.0,
+                    offset: const Offset(-2.0, 0.0),
                   ),
-                ),
-                const SizedBox(width: 10), // Reduced spacing from 40 to 10
-                IconButton(
-                  icon: const Icon(Icons.arrow_forward),
-                  onPressed:
-                      epubState.currentPage < epubState.totalPages - 1
-                          ? () {
-                            ref.read(epubStateProvider.notifier).nextPage();
-                            // Update the current book's last page
-                            if (currentBook != null) {
+                ],
+                border: Border.all(color: Colors.grey.shade400, width: 1.0),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.arrow_back, color: Colors.grey.shade700),
+                    onPressed:
+                        epubState.currentPage > 0
+                            ? () {
                               ref
-                                  .read(currentBookProvider.notifier)
-                                  .updateLastPage(epubState.currentPage + 1);
+                                  .read(epubStateProvider.notifier)
+                                  .previousPage();
+                              // Update the current book's last page
+                              if (currentBook != null) {
+                                ref
+                                    .read(currentBookProvider.notifier)
+                                    .updateLastPage(epubState.currentPage - 1);
+                              }
                             }
-                          }
-                          : null,
-                ),
-              ],
+                            : null,
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    '${epubState.currentPage + 1} / ${epubState.totalPages}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  IconButton(
+                    icon: Icon(
+                      Icons.arrow_forward,
+                      color: Colors.grey.shade700,
+                    ),
+                    onPressed:
+                        epubState.currentPage < epubState.totalPages - 1
+                            ? () {
+                              ref.read(epubStateProvider.notifier).nextPage();
+                              // Update the current book's last page
+                              if (currentBook != null) {
+                                ref
+                                    .read(currentBookProvider.notifier)
+                                    .updateLastPage(epubState.currentPage + 1);
+                              }
+                            }
+                            : null,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -486,47 +541,55 @@ class _SwipeableEpubViewerState extends ConsumerState<SwipeableEpubViewer>
 
       // Return the EpubViewer widget
       return StylusInputIgnoredWidget(
-        child: EpubViewer(
-          epubController: _epubController,
-          epubSource: epubSource,
-          displaySettings: EpubDisplaySettings(
-            flow: EpubFlow.paginated,
-            snap: true,
-          ),
-          onChaptersLoaded: (chapters) {
-            debugPrint('Chapters loaded: ${chapters.length}');
-          },
-          onEpubLoaded: () {
-            debugPrint('EPUB loaded');
-          },
-          onRelocated: (dynamic value) {
-            // Update the current page with default values
-            int currentPage = 0;
-            int totalPages = 1;
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            16.0,
+            8.0,
+            16.0,
+            16.0,
+          ), // Reduced top padding to maximize vertical space
+          child: EpubViewer(
+            epubController: _epubController,
+            epubSource: epubSource,
+            displaySettings: EpubDisplaySettings(
+              flow: EpubFlow.paginated,
+              snap: true,
+            ),
+            onChaptersLoaded: (chapters) {
+              debugPrint('Chapters loaded: ${chapters.length}');
+            },
+            onEpubLoaded: () {
+              debugPrint('EPUB loaded');
+            },
+            onRelocated: (dynamic value) {
+              // Update the current page with default values
+              int currentPage = 0;
+              int totalPages = 1;
 
-            // Log the value for debugging
-            debugPrint('Relocated: $value');
+              // Log the value for debugging
+              debugPrint('Relocated: $value');
 
-            // Update the page info in the state
-            ref
-                .read(epubStateProvider.notifier)
-                .updatePageInfo(
-                  currentPage: currentPage,
-                  totalPages: totalPages,
-                );
-
-            // Update the current book's last page
-            final currentBook = ref.read(currentBookProvider);
-            if (currentBook != null) {
+              // Update the page info in the state
               ref
-                  .read(currentBookProvider.notifier)
-                  .updateLastPage(currentPage);
-            }
-          },
-          onTextSelected: (dynamic selection) {
-            // Log the selection for debugging
-            debugPrint('Text selected: $selection');
-          },
+                  .read(epubStateProvider.notifier)
+                  .updatePageInfo(
+                    currentPage: currentPage,
+                    totalPages: totalPages,
+                  );
+
+              // Update the current book's last page
+              final currentBook = ref.read(currentBookProvider);
+              if (currentBook != null) {
+                ref
+                    .read(currentBookProvider.notifier)
+                    .updateLastPage(currentPage);
+              }
+            },
+            onTextSelected: (dynamic selection) {
+              // Log the selection for debugging
+              debugPrint('Text selected: $selection');
+            },
+          ),
         ),
       );
     }
