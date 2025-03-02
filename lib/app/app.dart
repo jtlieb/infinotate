@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../features/canvas/presentation/pages/drawing_canvas_page.dart';
+import '../features/unified/presentation/pages/home_page.dart';
 import '../core/widgets/stylus_detector.dart';
 
 class InfinotateApp extends StatelessWidget {
@@ -15,7 +15,7 @@ class InfinotateApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
           useMaterial3: true,
         ),
-        home: StylusDetector(child: const DrawingCanvasPage()),
+        home: StylusDetector(child: const HomePage()),
       ),
     );
   }
