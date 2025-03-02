@@ -45,8 +45,22 @@ class DrawingPainter extends CustomPainter {
 
   void _drawStrokes(Canvas canvas, List<List<Offset>> strokeList, Paint paint) {
     for (final stroke in strokeList) {
-      if (stroke.length < 2) continue;
+      if (stroke.isEmpty) continue;
 
+      // Handle single point strokes (like dots/periods)
+      if (stroke.length == 1) {
+        // Use a filled circle for single points
+        final dotPaint =
+            Paint()
+              ..color = paint.color
+              ..style = PaintingStyle.fill;
+
+        // Draw a small circle at the point location
+        canvas.drawCircle(stroke[0], paint.strokeWidth / 2, dotPaint);
+        continue;
+      }
+
+      // Handle multi-point strokes as before
       final path = Path()..moveTo(stroke[0].dx, stroke[0].dy);
 
       for (int i = 1; i < stroke.length; i++) {

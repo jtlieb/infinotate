@@ -21,7 +21,7 @@ class _SwipeableEpubViewerState extends ConsumerState<SwipeableEpubViewer>
   double _swipePosition = 0.0;
 
   // Width of the visible portion when minimized (in pixels)
-  static const double _minVisibleWidth = 20.0;
+  static const double _minVisibleWidth = 25.0;
 
   // Width of the EPUB viewer (as a percentage of screen width)
   static const double _epubWidthPercentage = 0.5;
@@ -31,7 +31,7 @@ class _SwipeableEpubViewerState extends ConsumerState<SwipeableEpubViewer>
   static const double _tabHeight = 50.0;
 
   // Tab offset when minimized (negative value to move it outside the EPUB viewer)
-  static const double _tabOffsetWhenMinimized = -40.0;
+  static const double _tabOffsetWhenMinimized = -60.0;
 
   // Corner radius values for the tab
   static const double _tabCornerRadius = 12.0;
@@ -108,7 +108,7 @@ class _SwipeableEpubViewerState extends ConsumerState<SwipeableEpubViewer>
       begin: _swipePosition,
       end: targetPosition,
     ).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeOutQuint),
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
 
     // Reset and run the animation
@@ -159,50 +159,190 @@ class _SwipeableEpubViewerState extends ConsumerState<SwipeableEpubViewer>
     // When fully swiped (_swipePosition = 1.0), offset is (epubWidth - _minVisibleWidth)
     final translationOffset = _swipePosition * (epubWidth - _minVisibleWidth);
 
-    // Only cover the right half of the screen with touch events
-    return Align(
-      alignment: Alignment.centerRight,
-      child: SizedBox(
-        width: epubWidth,
-        height: double.infinity,
-        child: StylusInputIgnoredWidget(
-          child: Material(
-            // Use Material widget to ensure proper rendering
-            color: Colors.transparent,
-            child: Stack(
+    // Calculate if the EPUB viewer is mostly hidden (>80% swiped)
+    final bool isEpubMostlyHidden = _swipePosition > 0.8;
+    final bool isEpubFullyHidden = _swipePosition >= 0.99;
+
+    // Calculate tab position for hit testing
+    final tabProgress =
+        _swipePosition <= 0.6 ? 0.0 : (_swipePosition - 0.6) / 0.4;
+    final tabLeftPosition = tabProgress * _tabOffsetWhenMinimized;
+
+    // Create a Stack to hold both the EPUB viewer and the tab
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        // Add a GestureDetector for the right edge of the screen
+        // This allows swiping from the right edge to bring the EPUB viewer back
+        Positioned(
+          top: 0,
+          bottom: 0,
+          right: 0,
+          width: _minVisibleWidth,
+          child: IgnorePointer(
+            // Only detect gestures when the EPUB viewer is mostly hidden
+            ignoring: !isEpubMostlyHidden,
+            child: GestureDetector(
+              onHorizontalDragUpdate: (details) {
+                if (isEpubMostlyHidden) {
+                  setState(() {
+                    // Calculate position change based on drag
+                    final dragAmount =
+                        -details.delta.dx / (epubWidth - _minVisibleWidth);
+                    _swipePosition = (_swipePosition - dragAmount).clamp(
+                      0.0,
+                      1.0,
+                    );
+                  });
+                }
+              },
+              onHorizontalDragEnd: (details) {
+                if (isEpubMostlyHidden) {
+                  final velocity = details.primaryVelocity ?? 0;
+                  if (velocity < -300) {
+                    // Fast swipe left - show
+                    _animateToPosition(0.0);
+                  } else if (velocity.abs() < 300) {
+                    // Slow swipe - toggle based on how far we've dragged
+                    _animateToPosition(_swipePosition > 0.95 ? 1.0 : 0.0);
+                  }
+                }
+              },
+              onTap: () {
+                if (isEpubMostlyHidden) {
+                  _animateToPosition(0.0); // Open the EPUB viewer
+                }
+              },
+              child: Container(color: Colors.transparent),
+            ),
+          ),
+        ),
+
+        // Main EPUB viewer container - positioned off-screen when minimized
+        Positioned(
+          top: 0,
+          bottom: 0,
+          // When minimized, position it completely off-screen except for the visible strip
+          right:
+              isEpubMostlyHidden
+                  ? -epubWidth + _minVisibleWidth
+                  : -translationOffset,
+          width: epubWidth,
+          child: IgnorePointer(
+            // Ignore pointer events when mostly hidden, allowing canvas to receive them
+            ignoring: isEpubMostlyHidden,
+            child: Material(
+              // Use Material widget to ensure proper rendering
+              color: Colors.transparent,
+              child: _buildEpubContainer(
+                context,
+                epubState,
+                currentBook,
+                epubWidth,
+              ),
+            ),
+          ),
+        ),
+
+        // Tab for swiping - always visible and interactive
+        Positioned(
+          bottom: 16,
+          // Position the tab at the edge of the visible portion
+          right:
+              isEpubFullyHidden
+                  ? -20
+                  : _swipePosition >= 0.99
+                  ? _minVisibleWidth - _tabWidth - tabLeftPosition
+                  : epubWidth - translationOffset - _tabWidth - tabLeftPosition,
+          width: _tabWidth, // Always use fixed tab width
+          height: _tabHeight,
+          child: _buildSwipeTab(epubWidth, tabProgress, isEpubFullyHidden),
+        ),
+      ],
+    );
+  }
+
+  // Build the swipe tab separately
+  Widget _buildSwipeTab(
+    double epubWidth,
+    double tabProgress,
+    bool isFullyMinimized,
+  ) {
+    final topLeftRadius = tabProgress * _tabCornerRadius;
+    final bottomLeftRadius = tabProgress * _tabCornerRadius;
+
+    return Transform.scale(
+      // Subtle scale effect based on swipe position
+      scale: 1.0 + (tabProgress * 0.1),
+      child: Material(
+        elevation: 0, // Remove elevation from the tab itself
+        color: Colors.transparent,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(topLeftRadius),
+          bottomLeft: Radius.circular(bottomLeftRadius),
+          topRight: const Radius.circular(_tabCornerRadius),
+          bottomRight: const Radius.circular(_tabCornerRadius),
+        ),
+        child: GestureDetector(
+          // Add gesture detector to the tab for swiping
+          onHorizontalDragUpdate: (details) {
+            setState(() {
+              // Calculate position change based on drag
+              final dragAmount =
+                  details.delta.dx / (epubWidth - _minVisibleWidth);
+              _swipePosition = (_swipePosition + dragAmount).clamp(0.0, 1.0);
+            });
+          },
+          onHorizontalDragEnd: (details) {
+            // Simple threshold-based decision
+            final velocity = details.primaryVelocity ?? 0;
+
+            if (velocity > 300) {
+              // Fast swipe right - dismiss
+              _animateToPosition(1.0);
+            } else if (velocity < -300) {
+              // Fast swipe left - show
+              _animateToPosition(0.0);
+            } else {
+              // Based on position
+              _animateToPosition(_swipePosition > 0.5 ? 1.0 : 0.0);
+            }
+          },
+          onTap: () {
+            // Toggle between open and closed on tap
+            _animateToPosition(_swipePosition < 0.5 ? 1.0 : 0.0);
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200, // Lighter grey with constant opacity
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(topLeftRadius),
+                bottomLeft: Radius.circular(bottomLeftRadius),
+                topRight: const Radius.circular(_tabCornerRadius),
+                bottomRight: const Radius.circular(_tabCornerRadius),
+              ),
+              border: Border.all(
+                color: Colors.grey.shade400, // More visible border color
+                width: 1.0, // Thinner border
+              ),
+            ),
+            child: Row(
+              // Align chevron to the left when minimized, center otherwise
+              mainAxisAlignment:
+                  isFullyMinimized
+                      ? MainAxisAlignment.start
+                      : MainAxisAlignment.center,
               children: [
-                // The EPUB viewer - always present
-                Positioned(
-                  top: 0,
-                  bottom: 0,
-                  right: -translationOffset,
-                  width: epubWidth,
-                  child: _buildEpubContainer(
-                    context,
-                    epubState,
-                    currentBook,
-                    epubWidth,
+                Padding(
+                  padding: EdgeInsets.only(left: isFullyMinimized ? 8.0 : 0),
+                  child: Icon(
+                    _swipePosition < 0.5
+                        ? Icons.keyboard_double_arrow_right
+                        : Icons.keyboard_double_arrow_left,
+                    color: Colors.grey.shade700,
+                    size: 30,
                   ),
                 ),
-
-                // Edge swipe detector - only when minimized
-                if (_swipePosition > 0.9)
-                  Positioned(
-                    top: 0,
-                    bottom: 0,
-                    right: 0,
-                    width: _minVisibleWidth + 20,
-                    child: GestureDetector(
-                      onTap: () => _animateToPosition(0.0),
-                      onHorizontalDragEnd: (details) {
-                        // Simple velocity check
-                        if ((details.primaryVelocity ?? 0) < -300) {
-                          _animateToPosition(0.0); // Open
-                        }
-                      },
-                      child: Container(color: Colors.transparent),
-                    ),
-                  ),
               ],
             ),
           ),
@@ -218,32 +358,17 @@ class _SwipeableEpubViewerState extends ConsumerState<SwipeableEpubViewer>
     dynamic currentBook,
     double epubWidth,
   ) {
-    // Calculate the tab's left position based on swipe position
-    // Only start moving the tab when the slide is 60% complete
-    // This prevents the button from moving under the user's finger during most of the slide
-    final tabProgress =
-        _swipePosition <= 0.6
-            ? 0.0
-            : (_swipePosition - 0.6) /
-                0.4; // Normalize the remaining 40% to 0-100%
-    final tabLeftPosition = tabProgress * _tabOffsetWhenMinimized;
-
-    // Calculate corner radius transformation
-    // When visible, keep normal corners (right side rounded)
-    // When minimized, transform to have both sides rounded
-    final topLeftRadius = tabProgress * _tabCornerRadius;
-    final bottomLeftRadius = tabProgress * _tabCornerRadius;
-
     return Stack(
       clipBehavior: Clip.none, // Prevent clipping of child widgets
       children: [
         // Main EPUB container with shadow on the left edge only
         PhysicalModel(
           color: Colors.white,
-          elevation: 6.0,
+          elevation: 5.0, // Increased from 3.0 to 5.0
           shadowColor: Colors.black.withAlpha(
-            77,
-          ), // Using withAlpha instead of withOpacity (0.3 * 255 ≈ 77)
+            20,
+          ), // Using withAlpha for better precision
+          // Add a custom shadow that only appears on the left side
           child: Container(
             width:
                 double.infinity, // Ensure full width within parent constraints
@@ -259,106 +384,22 @@ class _SwipeableEpubViewerState extends ConsumerState<SwipeableEpubViewer>
                   width: 1.0,
                 ),
               ),
+              // Add box shadow only on the left side
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(
+                    20,
+                  ), // Using withAlpha instead of withOpacity
+                  blurRadius: 5.0,
+                  spreadRadius: 0.0,
+                  offset: const Offset(
+                    -2.0,
+                    0.0,
+                  ), // Shadow only on the left side
+                ),
+              ],
             ),
             child: _buildEpubContent(context, epubState.filePath!),
-          ),
-        ),
-
-        // Tab for swiping away the epub (aligned with navigation controls)
-        Positioned(
-          bottom: 16, // Same position as the navigation controls
-          left: tabLeftPosition,
-          width: _tabWidth,
-          height: _tabHeight, // Use the animated height
-          // Use a higher z-index to ensure the tab is above other elements
-          child: Transform.scale(
-            // Subtle scale effect based on swipe position
-            scale: 1.0 + (tabProgress * 0.1),
-            child: Material(
-              elevation: 0, // Remove elevation from the tab
-              color: Colors.transparent,
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(topLeftRadius),
-                bottomLeft: Radius.circular(bottomLeftRadius),
-                topRight: const Radius.circular(_tabCornerRadius),
-                bottomRight: const Radius.circular(_tabCornerRadius),
-              ),
-              child: GestureDetector(
-                // Add gesture detector to the tab for swiping
-                onHorizontalDragUpdate: (details) {
-                  setState(() {
-                    // Calculate position change based on drag
-                    final dragAmount =
-                        details.delta.dx / (epubWidth - _minVisibleWidth);
-                    _swipePosition = (_swipePosition + dragAmount).clamp(
-                      0.0,
-                      1.0,
-                    );
-                  });
-                },
-                onHorizontalDragEnd: (details) {
-                  // Simple threshold-based decision
-                  final velocity = details.primaryVelocity ?? 0;
-
-                  if (velocity > 300) {
-                    // Fast swipe right - dismiss
-                    _animateToPosition(1.0);
-                  } else if (velocity < -300) {
-                    // Fast swipe left - show
-                    _animateToPosition(0.0);
-                  } else {
-                    // Based on position
-                    _animateToPosition(_swipePosition > 0.5 ? 1.0 : 0.0);
-                  }
-                },
-                child: Container(
-                  decoration: BoxDecoration(
-                    color:
-                        Colors
-                            .grey
-                            .shade200, // Lighter grey with constant opacity
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(topLeftRadius),
-                      bottomLeft: Radius.circular(bottomLeftRadius),
-                      topRight: const Radius.circular(_tabCornerRadius),
-                      bottomRight: const Radius.circular(_tabCornerRadius),
-                    ),
-                    border: Border.all(
-                      color: Colors.grey.shade300, // More subtle border color
-                      width: 1.0, // Thinner border
-                    ),
-                  ),
-                  child: Row(
-                    // Adjust alignment based on swipe position
-                    // When minimized, shift the arrow to be centered in the visible portion
-                    mainAxisAlignment:
-                        _swipePosition > 0.9
-                            ? MainAxisAlignment.start
-                            : MainAxisAlignment.center,
-                    children: [
-                      // Add padding that increases as the tab moves off-screen
-                      // This keeps the arrow centered in the visible portion
-                      Padding(
-                        padding: EdgeInsets.only(
-                          left:
-                              _swipePosition > 0.9
-                                  ? (_tabWidth - _minVisibleWidth) * 0.5 -
-                                      15 // Center in visible area
-                                  : 0, // No padding when fully visible
-                        ),
-                        child: Icon(
-                          _swipePosition < 0.5
-                              ? Icons.keyboard_double_arrow_right
-                              : Icons.keyboard_double_arrow_left,
-                          color: Colors.grey.shade700,
-                          size: 30,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
           ),
         ),
 
@@ -422,20 +463,24 @@ class _SwipeableEpubViewerState extends ConsumerState<SwipeableEpubViewer>
 
   /// Build the EPUB content
   Widget _buildEpubContent(BuildContext context, String filePath) {
-    // For now, we'll just display a placeholder
-    // In a real implementation, you would use the vocsy_epub_viewer to display the content
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text('EPUB Viewer', style: Theme.of(context).textTheme.headlineMedium),
-        const SizedBox(height: 16),
-        Text('File: $filePath', style: Theme.of(context).textTheme.bodyLarge),
-        const SizedBox(height: 32),
-        const Text(
-          'Swipe left or right to navigate between pages',
-          textAlign: TextAlign.center,
-        ),
-      ],
+    // Wrap only the EPUB content with StylusInputIgnoredWidget
+    return StylusInputIgnoredWidget(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            'EPUB Viewer',
+            style: Theme.of(context).textTheme.headlineMedium,
+          ),
+          const SizedBox(height: 16),
+          Text('File: $filePath', style: Theme.of(context).textTheme.bodyLarge),
+          const SizedBox(height: 32),
+          const Text(
+            'Swipe left or right to navigate between pages',
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 }

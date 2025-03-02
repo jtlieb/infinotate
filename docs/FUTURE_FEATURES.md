@@ -13,7 +13,7 @@ void paint(Canvas canvas, Size size) {
   // If in eraser hover mode, show translucent strokes that would be erased
   if (isEraserHovering) {
     final eraserPaint = Paint()
-      ..color = Colors.black.withOpacity(0.3)
+      ..color = Colors.black.withValues(opacity = 0.3)
       ..strokeWidth = 2.0
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;

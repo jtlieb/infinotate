@@ -28,9 +28,13 @@ class DrawingCanvasState extends ConsumerState<DrawingCanvas> {
         Listener(
           behavior: HitTestBehavior.translucent,
           onPointerDown: (details) {
+            // Determine mode based on input type
             if (details.kind == PointerDeviceKind.stylus) {
+              // Allow drawing on the entire canvas, even under the EPUB viewer
+              // The EPUB content itself will ignore stylus input via StylusInputIgnoredWidget
+
               if (details.buttons == kSecondaryButton) {
-                // Eraser mode
+                // Eraser mode for stylus secondary button
                 ref.read(drawingStateProvider.notifier).startErasing();
                 ref
                     .read(currentNoteProvider.notifier)
@@ -40,7 +44,7 @@ class DrawingCanvasState extends ConsumerState<DrawingCanvas> {
                       transform.offset,
                     );
               } else {
-                // Drawing mode
+                // Drawing mode for stylus primary button
                 ref.read(drawingStateProvider.notifier).startDrawing();
                 final adjustedPosition =
                     (details.localPosition - transform.offset) /
@@ -49,6 +53,9 @@ class DrawingCanvasState extends ConsumerState<DrawingCanvas> {
                     .read(currentStrokeProvider.notifier)
                     .start(adjustedPosition);
               }
+            } else {
+              // Touch input (not stylus) - set to idle for panning
+              ref.read(drawingStateProvider.notifier).stopDrawingAndErasing();
             }
           },
           onPointerMove: (details) {
@@ -78,12 +85,14 @@ class DrawingCanvasState extends ConsumerState<DrawingCanvas> {
             if (details.kind == PointerDeviceKind.stylus) {
               if (drawingState.mode == DrawingMode.drawing &&
                   currentStroke.isNotEmpty) {
+                // Add the completed stroke to the current note
                 ref.read(currentNoteProvider.notifier).addStroke(currentStroke);
                 ref.read(currentStrokeProvider.notifier).clear();
 
-                // Debug toast removed to make it less aggressive
+                // Don't change the mode - it will be determined on next pointer down
               }
-              ref.read(drawingStateProvider.notifier).stopDrawingAndErasing();
+              // Don't change to idle mode when lifting the stylus
+              // Mode will be determined on the next pointer down event
             }
           },
           child: CustomPaint(
@@ -98,10 +107,11 @@ class DrawingCanvasState extends ConsumerState<DrawingCanvas> {
           ),
         ),
 
-        // Gesture layer
+        // Gesture layer for panning
         GestureDetector(
           behavior: HitTestBehavior.translucent,
           onPanStart: (details) {
+            // Only allow panning when in idle mode (touch input)
             if (drawingState.mode == DrawingMode.idle) {
               _lastFocalPoint = details.globalPosition;
             }
