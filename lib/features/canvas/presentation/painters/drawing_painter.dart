@@ -18,16 +18,19 @@ class DrawingPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    canvas.save();
+    canvas.translate(offset.dx, offset.dy);
+    canvas.scale(scale);
+
+    // Draw the dotted background pattern
+    _drawDottedBackground(canvas, size);
+
     final paint =
         Paint()
           ..color = Colors.black
           ..strokeWidth = 2.0
           ..strokeCap = StrokeCap.round
           ..style = PaintingStyle.stroke;
-
-    canvas.save();
-    canvas.translate(offset.dx, offset.dy);
-    canvas.scale(scale);
 
     // Draw all completed notes
     for (final note in notes) {
@@ -41,6 +44,57 @@ class DrawingPainter extends CustomPainter {
     _drawStrokes(canvas, [currentStroke], paint);
 
     canvas.restore();
+  }
+
+  void _drawDottedBackground(Canvas canvas, Size size) {
+    // Calculate the visible area in the canvas coordinates
+    final visibleRect = Rect.fromLTWH(
+      -offset.dx / scale,
+      -offset.dy / scale,
+      size.width / scale,
+      size.height / scale,
+    );
+
+    // Define the grid spacing
+    const double spacing = 30.0;
+    const double majorGridSpacing = 120.0; // Spacing for larger dots
+
+    // Calculate the grid boundaries based on the visible area
+    final startX = (visibleRect.left / spacing).floor() * spacing;
+    final endX = (visibleRect.right / spacing).ceil() * spacing;
+    final startY = (visibleRect.top / spacing).floor() * spacing;
+    final endY = (visibleRect.bottom / spacing).ceil() * spacing;
+
+    // Create paints for the dots
+    final regularDotPaint =
+        Paint()
+          ..color = Colors.grey.withAlpha(25)
+          ..style = PaintingStyle.fill;
+
+    final majorDotPaint =
+        Paint()
+          ..color = Colors.grey.withAlpha(40)
+          ..style = PaintingStyle.fill;
+
+    // Draw the dots
+    for (double x = startX; x <= endX; x += spacing) {
+      for (double y = startY; y <= endY; y += spacing) {
+        // Check if this is a major grid point
+        final isMajorX = (x % majorGridSpacing).abs() < 0.1;
+        final isMajorY = (y % majorGridSpacing).abs() < 0.1;
+
+        if (isMajorX && isMajorY) {
+          // Draw larger dot at major grid intersections
+          canvas.drawCircle(Offset(x, y), 2.5, majorDotPaint);
+        } else if (isMajorX || isMajorY) {
+          // Draw medium dot at major grid lines
+          canvas.drawCircle(Offset(x, y), 2.0, majorDotPaint);
+        } else {
+          // Draw regular small dot
+          canvas.drawCircle(Offset(x, y), 1.5, regularDotPaint);
+        }
+      }
+    }
   }
 
   void _drawStrokes(Canvas canvas, List<List<Offset>> strokeList, Paint paint) {
