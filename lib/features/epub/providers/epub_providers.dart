@@ -55,4 +55,9 @@ class EpubStateNotifier extends StateNotifier<EpubState> {
   void updateTotalPages(int totalPages) {
     state = state.copyWith(totalPages: totalPages);
   }
+
+  /// Update both current page and total pages
+  void updatePageInfo({required int currentPage, required int totalPages}) {
+    state = state.copyWith(currentPage: currentPage, totalPages: totalPages);
+  }
 }

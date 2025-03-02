@@ -102,4 +102,10 @@ class FilePickerService {
 
     return null; // Return null if no file was selected or an error occurred
   }
+
+  /// Check if a file path is an asset path
+  static bool isAssetPath(String? path) {
+    if (path == null) return false;
+    return path.startsWith('assets/');
+  }
 }

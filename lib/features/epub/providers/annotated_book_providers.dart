@@ -22,11 +22,11 @@ class AnnotatedBooksNotifier extends StateNotifier<List<AnnotatedBook>> {
         // Add a sample book by default
         AnnotatedBook(
           id: 'sample-book',
-          filePath: '/path/to/sample.epub',
-          title: 'Sample Book',
-          author: 'Sample Author',
+          filePath: 'assets/books/pride_and_prejudice.epub',
+          title: 'Pride and Prejudice',
+          author: 'Jane Austen',
           lastModified: DateTime.now(),
-          totalPages: 10,
+          totalPages: 345,
         ),
       ]);
 

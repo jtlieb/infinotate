@@ -1,23 +1,26 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:vocsy_epub_viewer/epub_viewer.dart';
+import 'flutter_epub_viewer_service.dart';
 
 /// Service for handling EPUB file operations
+/// This is a wrapper around FlutterEpubViewerService for backward compatibility
 class EpubService {
-  /// Open an EPUB file using the vocsy_epub_viewer
+  /// Open an EPUB file using the flutter_epub_viewer
   static Future<void> openEpub(String filePath) async {
     final File file = File(filePath);
 
     if (await file.exists()) {
-      VocsyEpub.setConfig(
+      // Configure the viewer
+      await FlutterEpubViewerService.configureViewer(
         themeColor: Colors.blue[800]!,
         identifier: "iosBook",
-        scrollDirection: EpubScrollDirection.ALLDIRECTIONS,
+        scrollDirection: DocScrollDirection.allDirections,
         allowSharing: true,
         enableTts: true,
       );
 
-      VocsyEpub.open(filePath);
+      // Open the file
+      await FlutterEpubViewerService.openFile(filePath);
     } else {
       throw Exception('EPUB file not found: $filePath');
     }

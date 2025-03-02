@@ -2,7 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/epub_providers.dart';
 import '../../providers/annotated_book_providers.dart';
+import '../../services/file_picker_service.dart';
+import '../../services/flutter_epub_viewer_service.dart' as service;
+import 'package:flutter_epub_viewer/flutter_epub_viewer.dart';
 import '../../../../core/widgets/stylus_input_ignored_widget.dart';
+
+// State provider to track if the EPUB is being loaded
+final epubLoadingProvider = StateProvider<bool>((ref) => false);
+
+// State provider to track if the EPUB viewer is embedded
+final epubEmbeddedProvider = StateProvider<bool>((ref) => false);
 
 /// A widget that displays an EPUB book in a swipeable panel
 class SwipeableEpubViewer extends ConsumerStatefulWidget {
@@ -40,6 +49,9 @@ class _SwipeableEpubViewerState extends ConsumerState<SwipeableEpubViewer>
   late AnimationController _animationController;
   late Animation<double> _animation;
   bool _isInitialized = false;
+
+  // EPUB controller
+  final EpubController _epubController = EpubController();
 
   // Debounce mechanism to prevent rapid animations
   DateTime _lastAnimationTime = DateTime.now();
@@ -455,7 +467,85 @@ class _SwipeableEpubViewerState extends ConsumerState<SwipeableEpubViewer>
 
   /// Build the EPUB content
   Widget _buildEpubContent(BuildContext context, String filePath) {
-    // Wrap only the EPUB content with StylusInputIgnoredWidget
+    // Determine if the file path is an asset path
+    final isAsset = FilePickerService.isAssetPath(filePath);
+
+    // Check if the EPUB is being loaded
+    final isLoading = ref.watch(epubLoadingProvider);
+
+    // Check if the EPUB viewer is embedded
+    final isEmbedded = ref.watch(epubEmbeddedProvider);
+
+    // If the EPUB is embedded, show the embedded viewer
+    if (isEmbedded) {
+      // Create the source based on the file path
+      final epubSource =
+          isAsset
+              ? service.FlutterEpubViewerService.getSourceForAsset(filePath)
+              : service.FlutterEpubViewerService.getSourceForFile(filePath);
+
+      // Return the EpubViewer widget
+      return StylusInputIgnoredWidget(
+        child: EpubViewer(
+          epubController: _epubController,
+          epubSource: epubSource,
+          displaySettings: EpubDisplaySettings(
+            flow: EpubFlow.paginated,
+            snap: true,
+          ),
+          onChaptersLoaded: (chapters) {
+            debugPrint('Chapters loaded: ${chapters.length}');
+          },
+          onEpubLoaded: () {
+            debugPrint('EPUB loaded');
+          },
+          onRelocated: (dynamic value) {
+            // Update the current page with default values
+            int currentPage = 0;
+            int totalPages = 1;
+
+            // Log the value for debugging
+            debugPrint('Relocated: $value');
+
+            // Update the page info in the state
+            ref
+                .read(epubStateProvider.notifier)
+                .updatePageInfo(
+                  currentPage: currentPage,
+                  totalPages: totalPages,
+                );
+
+            // Update the current book's last page
+            final currentBook = ref.read(currentBookProvider);
+            if (currentBook != null) {
+              ref
+                  .read(currentBookProvider.notifier)
+                  .updateLastPage(currentPage);
+            }
+          },
+          onTextSelected: (dynamic selection) {
+            // Log the selection for debugging
+            debugPrint('Text selected: $selection');
+          },
+        ),
+      );
+    }
+
+    // If the EPUB is loading, show a loading spinner
+    if (isLoading) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 20),
+            Text('Loading EPUB...'),
+          ],
+        ),
+      );
+    }
+
+    // Otherwise, show a button to open the EPUB
     return StylusInputIgnoredWidget(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -466,11 +556,16 @@ class _SwipeableEpubViewerState extends ConsumerState<SwipeableEpubViewer>
           ),
           const SizedBox(height: 16),
           Text(
-            'File: $filePath',
+            isAsset ? 'Asset: $filePath' : 'File: $filePath',
             style: Theme.of(context).textTheme.bodyLarge,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 32),
+          ElevatedButton(
+            onPressed: () => _openEpubBook(context, filePath, isAsset),
+            child: const Text('Open EPUB'),
+          ),
+          const SizedBox(height: 16),
           const Text(
             'Swipe left or right to navigate between pages',
             textAlign: TextAlign.center,
@@ -478,5 +573,59 @@ class _SwipeableEpubViewerState extends ConsumerState<SwipeableEpubViewer>
         ],
       ),
     );
+  }
+
+  /// Open the EPUB book
+  void _openEpubBook(
+    BuildContext context,
+    String filePath,
+    bool isAsset,
+  ) async {
+    // Set loading state to true
+    ref.read(epubLoadingProvider.notifier).state = true;
+
+    try {
+      // Set embedded state to true before opening the EPUB
+      ref.read(epubEmbeddedProvider.notifier).state = true;
+
+      // No need to configure the viewer anymore as we're using the EpubController directly
+    } catch (e) {
+      // Reset states on error
+      ref.read(epubLoadingProvider.notifier).state = false;
+      ref.read(epubEmbeddedProvider.notifier).state = false;
+
+      // Show a more detailed error message
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Error Opening EPUB'),
+              content: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Failed to open: ${filePath.split('/').last}'),
+                    const SizedBox(height: 10),
+                    Text('Error: ${e.toString()}'),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          },
+        );
+      }
+      debugPrint('Error opening EPUB: $e');
+    } finally {
+      // Set loading state to false
+      ref.read(epubLoadingProvider.notifier).state = false;
+    }
   }
 }
